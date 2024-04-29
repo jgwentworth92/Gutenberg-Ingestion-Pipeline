@@ -12,3 +12,4 @@ python-multipart
 kafka-python-ng
 PyGithub
 icecream
+aiokafka
