@@ -29,7 +29,7 @@ async def handle_webhook(request: Request):
             ic(f"events in event data{event}")
             ic(f"---------end of event--------------")
             for thing in event:
-                ic(f"data in event {thing}")
+                ic(f"data in events {thing}")
 
         """
          if 'commits' in event_data:
