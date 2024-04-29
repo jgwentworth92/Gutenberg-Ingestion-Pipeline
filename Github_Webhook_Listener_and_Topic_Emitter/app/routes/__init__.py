@@ -28,19 +28,18 @@ async def handle_webhook(request: Request):
         for event in event_data:
             ic(f"events in event data{event}")
             ic(f"---------end of event--------------")
-            for thing in event:
-                ic(f"data in events {thing}")
 
 
-         if 'commits' in event_data:
-            # Convert raw commits to Pydantic models before processing
+
+        if 'commits' in event_data:
+        # Convert raw commits to Pydantic models before processing
             commit_models = [CommitData(
-                author=commit['author']['name'],
-                message=commit['message'],
-                date=commit['timestamp'],
-                url=commit['url'],
-                commit_id=commit['id'],
-                files=[FileInfo(**file) for file in commit['files']]
+            author=commit['author']['name'],
+            message=commit['message'],
+            date=commit['timestamp'],
+            url=commit['url'],
+            commit_id=commit['id'],
+            files=[FileInfo(**file) for file in commit['files']]
             ) for commit in event_data['commits']]
             results = await process_commits(commit_models, config.KAFKA_TOPIC)
             return {"status": "Processed", "results": results}
