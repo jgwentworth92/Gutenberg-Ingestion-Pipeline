@@ -10,7 +10,7 @@ from langchain_core.documents import Document
 from app.utils.verify_kafka import check_kafka_connection
 from langchain_openai import OpenAIEmbeddings
 from  app.utils.get_qdrant import get_qdrant_vector_store
-
+from icecream import ic
 config = get_config()
 app = FastAPI(
     title=get_config().TITLE,
@@ -41,7 +41,10 @@ async def consume_and_store_documents():
         async for message in consumer:
             documents = [Document(page_content=doc['page_content'], metadata=doc['metadata']) for doc in message.value]
             for doc in documents:
-                logging.info(doc.metadata)
+                ic("___________________ summary content end___________")
+                ic(f"metadata of commit {doc.metadata}")
+                ic("___________________ summary content end___________")
+                ic(f"page content of commit {doc.page_content}")
             # Determine collection name dynamically from document metadata
 
             try:
