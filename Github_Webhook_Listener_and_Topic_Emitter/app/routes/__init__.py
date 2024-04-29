@@ -25,8 +25,12 @@ async def handle_webhook(request: Request):
         event_data = await request.json()  # Get the JSON data from the request
 
         # Convert the entire JSON object to a string
-        event_data_str = json.dumps(event_data, indent=4)  # Pretty print the JSON for better readability
-        ic(event_data_str)
+        for event in event_data:
+            ic(f"events in event data{event}")
+            ic(f"---------end of event--------------")
+            for thing in event:
+                ic(f"data in event {thing}")
+
         """
          if 'commits' in event_data:
             # Convert raw commits to Pydantic models before processing
