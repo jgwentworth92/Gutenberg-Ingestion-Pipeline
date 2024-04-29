@@ -51,6 +51,7 @@ services:
       KAFKA_TOPIC: "${TOPIC_NAME}"
       GITHUB_ACCESS_TOKEN: "${GITHUB_ACCESS_TOKEN}"
       REPO_NAME: "${REPO_NAME}"
+      CALLBACK_URL: "${CALLBACK_URL}"
       HOST:  "0.0.0.0"
       PORT: 8001
     ports:
