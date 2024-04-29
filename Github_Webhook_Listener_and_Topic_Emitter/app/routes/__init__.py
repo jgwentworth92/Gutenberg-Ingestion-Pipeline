@@ -1,88 +1,93 @@
-from fastapi import FastAPI, APIRouter, Request, HTTPException
-from kafka import KafkaProducer
-from json import dumps
-from github import Github
-from icecream import ic
+import json
+
+from fastapi import APIRouter, HTTPException, Request
 import logging
-import os
-
+from github import Github
+from aiokafka import AIOKafkaProducer
+from json import dumps
+from schema.github_schema import CommitData, FileInfo  # Import your Pydantic models
 from app.config import get_config
-
-# Create an APIRouter instance
-router = APIRouter(
-    prefix="/github",  # This is the base path for all endpoints defined in this router.
-    tags=["GitHub Operations"],  # Tags used for grouping endpoints in the docs
-    responses={404: {"description": "Not found"}}
-)
-
-config = get_config()
-
-GITHUB_ACCESS_TOKEN = config.GITHUB_ACCESS_TOKEN
-REPO_NAME = config.REPO_NAME
-KAFKA_SERVER = config.KAFKA_SERVER
-KAFKA_TOPIC = config.KAFKA_TOPIC
+from icecream import ic
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+config = get_config()
+
+router = APIRouter(
+    prefix="/github",
+    tags=["GitHub Operations"],
+    responses={404: {"description": "Not found"}}
+)
 
 
 @router.post("/webhook")
 async def handle_webhook(request: Request):
-    event_data = await request.json()
-    for event in event_data:
-        ic(event)
-    return {"status": "Processed"}
+    try:
+        event_data = await request.json()  # Get the JSON data from the request
+
+        # Convert the entire JSON object to a string
+        event_data_str = json.dumps(event_data, indent=4)  # Pretty print the JSON for better readability
+        ic(event_data_str)
+        """
+         if 'commits' in event_data:
+            # Convert raw commits to Pydantic models before processing
+            commit_models = [CommitData(
+                author=commit['author']['name'],
+                message=commit['message'],
+                date=commit['timestamp'],
+                url=commit['url'],
+                commit_id=commit['id'],
+                files=[FileInfo(**file) for file in commit['files']]
+            ) for commit in event_data['commits']]
+            results = await process_commits(commit_models, config.KAFKA_TOPIC)
+            return {"status": "Processed", "results": results}
+        """
+        # Return the stringified JSON data
+    except Exception as e:
+        logging.error(f"Error in processing commits: {e}")
+    return {"status": "Received", "data": "event_data_str"}
 
 
 @router.post("/set_repo")
 async def set_repository(repo_name: str):
     if not repo_name:
         raise HTTPException(status_code=400, detail="Repository name is required.")
-
-    results = process_commits(GITHUB_ACCESS_TOKEN, repo_name)
-    return {"status": results}
-
-
-def process_commits(access_token, repo_name):
-    producer = KafkaProducer(
-        bootstrap_servers=KAFKA_SERVER,
-        value_serializer=lambda x: dumps(x).encode('utf-8'),
-        retries=5,
-        retry_backoff_ms=300,
-        acks='all',
-        request_timeout_ms=5000
-    )
-
-    g = Github(access_token)
+    g = Github(config.GITHUB_ACCESS_TOKEN)
     repo = g.get_repo(repo_name)
     commits = repo.get_commits()
+    commit_models = [CommitData(
+        author=commit.author.login if commit.author else "Unknown",
+        message=commit.commit.message,
+        date=str(commit.commit.author.date),
+        url=commit.html_url,
+        commit_id=commit.sha,
+        files=[FileInfo(
+            filename=file.filename,
+            status=file.status,
+            additions=file.additions,
+            deletions=file.deletions,
+            changes=file.changes,
+            patch=file.patch if file.patch else None
+        ) for file in commit.files]
+    ) for commit in commits]
+    results = await process_commits(commit_models, config.KAFKA_TOPIC)
+    return {"status": "Processed", "results": results}
+
+
+async def process_commits(commits, kafka_topic):
+    producer = AIOKafkaProducer(
+        bootstrap_servers=config.KAFKA_SERVER,
+        value_serializer=lambda x: dumps(x).encode('utf-8')
+    )
+    await producer.start()
     results = []
-
-    for commit in commits:
-        files_info = []
-        for file in commit.files:
-            file_data = {
-                'filename': file.filename,
-                'status': file.status,
-                'additions': file.additions,
-                'deletions': file.deletions,
-                'changes': file.changes,
-                'patch': file.patch if file.patch else None
-            }
-            files_info.append(file_data)
-            ic(file_data['changes'])
-
-        data = {
-            'author': commit.author.login if commit.author else "Unknown",
-            'message': commit.commit.message,
-            'date': str(commit.commit.author.date),
-            'url': commit.html_url,
-            'commit_id': commit.sha,
-            'files': files_info
-        }
-
-        producer.send(KAFKA_TOPIC, value=data)
-        logging.info(f"Sent commit by {data['author']} at {data['date']} with files changes.")
-        results.append(
-            f"Sent commit {data['commit_id']} by {data['author']} at {data['date']} with commit message {data['message']}.")
-
+    try:
+        for commit in commits:
+            # Now directly using commit.dict() since commits are already validated Pydantic models
+            await producer.send_and_wait(kafka_topic, commit.dict())
+            results.append(f"Sent commit {commit.commit_id} by {commit.author}")
+            logging.info(f"Sent commit by {commit.author} at {commit.date}")
+    except Exception as e:
+        logging.error(f"Error in processing commits: {e}")
+    finally:
+        await producer.stop()
     return results
