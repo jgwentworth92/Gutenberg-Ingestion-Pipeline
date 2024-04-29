@@ -9,7 +9,7 @@ from json import dumps
 from schema.github_schema import CommitData, FileInfo  # Import your Pydantic models
 from app.config import get_config
 from icecream import ic
-
+import httpx
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 config = get_config()
 
@@ -20,28 +20,40 @@ router = APIRouter(
 )
 
 
+async def get_commit_details(commit_id: str, repo: str, owner: str, token: str) -> dict:
+    url = f"https://api.github.com/repos/{owner}/{repo}/commits/{commit_id}"
+    headers = {"Authorization": f"token {token}"}
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url, headers=headers)
+        return response.json()
+
 @router.post("/webhook")
 async def handle_webhook(request: Request):
     try:
-        event_data = await request.json()  # Get the JSON data from the request
+        event_data = await request.json()
         ic("Received webhook data:", event_data)
 
-        if 'commits' in event_data:
-            # Convert raw commits to Pydantic models before processing
-            commit_models: List[CommitData] = [
-                CommitData(
-                    author=commit['author']['name'],
-                    message=commit['message'],
-                    date=commit['timestamp'],
-                    url=commit['url'],
+        if 'commits' in event_data and 'repository' in event_data:
+            owner = event_data['repository']['owner']['login']
+            repo = event_data['repository']['name']
+            commit_details = []
+
+            for commit in event_data['commits']:
+                # Fetch detailed commit data including files
+                detailed_commit = await get_commit_details(commit['id'], repo, owner, config.GITHUB_ACCESS_TOKEN)
+                commit_data = CommitData(
+                    author=detailed_commit['commit']['author']['name'],
+                    message=detailed_commit['commit']['message'],
+                    date=detailed_commit['commit']['author']['date'],
+                    url=detailed_commit['html_url'],
                     commit_id=commit['id'],
-                    files=[FileInfo(**file) for file in commit['files']]
-                ) for commit in event_data['commits']
-            ]
-            results = await process_commits(commit_models, "your-kafka-topic")
+                    files=[FileInfo(**file) for file in detailed_commit.get('files', [])]
+                )
+                commit_details.append(commit_data)
+
+            results = await process_commits(commit_details, "your-kafka-topic")
             return {"status": "Processed", "results": results}
 
-        # If no commits are found, just acknowledge the receipt
         return {"status": "Received", "data": "No relevant data to process"}
 
     except Exception as e:
