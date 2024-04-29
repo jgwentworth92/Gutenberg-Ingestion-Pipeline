@@ -13,3 +13,4 @@ kafka-python-ng
 PyGithub
 icecream
 aiokafka
+httpx
