@@ -1,4 +1,5 @@
 import json
+from typing import List
 
 from fastapi import APIRouter, HTTPException, Request
 import logging
@@ -23,31 +24,29 @@ router = APIRouter(
 async def handle_webhook(request: Request):
     try:
         event_data = await request.json()  # Get the JSON data from the request
-
-        # Convert the entire JSON object to a string
-        for event in event_data:
-            ic(f"events in event data{event}")
-            ic(f"---------end of event--------------")
-
-
+        ic("Received webhook data:", event_data)
 
         if 'commits' in event_data:
-        # Convert raw commits to Pydantic models before processing
-            commit_models = [CommitData(
-            author=commit['author']['name'],
-            message=commit['message'],
-            date=commit['timestamp'],
-            url=commit['url'],
-            commit_id=commit['id'],
-            files=[FileInfo(**file) for file in commit['files']]
-            ) for commit in event_data['commits']]
-            results = await process_commits(commit_models, config.KAFKA_TOPIC)
+            # Convert raw commits to Pydantic models before processing
+            commit_models: List[CommitData] = [
+                CommitData(
+                    author=commit['author']['name'],
+                    message=commit['message'],
+                    date=commit['timestamp'],
+                    url=commit['url'],
+                    commit_id=commit['id'],
+                    files=[FileInfo(**file) for file in commit['files']]
+                ) for commit in event_data['commits']
+            ]
+            results = await process_commits(commit_models, "your-kafka-topic")
             return {"status": "Processed", "results": results}
 
-        # Return the stringified JSON data
+        # If no commits are found, just acknowledge the receipt
+        return {"status": "Received", "data": "No relevant data to process"}
+
     except Exception as e:
-        logging.error(f"Error in processing commits: {e}")
-    return {"status": "Received", "data": "event_data_str"}
+        logging.error(f"Error in processing webhook: {e}")
+        return {"status": "Error", "message": str(e)}
 
 
 @router.post("/set_repo")
