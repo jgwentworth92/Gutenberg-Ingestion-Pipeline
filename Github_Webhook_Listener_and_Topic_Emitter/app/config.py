@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     TITLE: str = "Microservice FastAPI"
     DESCRIPTION: str = "Microservice handling GitHub commits and Kafka integration."
     VERSION: str = "1.0.0"
-
+    CALLBACK_URL: str
     # Kafka Configuration
     KAFKA_SERVER: str
     KAFKA_TOPIC: str
