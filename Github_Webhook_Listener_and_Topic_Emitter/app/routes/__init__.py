@@ -1,9 +1,10 @@
 import json
 from typing import List
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Body
 import logging
-from github import Github
+from github import Github, GithubException
+
 from aiokafka import AIOKafkaProducer
 from json import dumps
 from schema.github_schema import CommitData, FileInfo  # Import your Pydantic models
@@ -18,6 +19,33 @@ router = APIRouter(
     tags=["GitHub Operations"],
     responses={404: {"description": "Not found"}}
 )
+
+
+@router.post("/add-webhook")
+async def add_webhook(
+        token: str = Body(..., embed=True),
+        username: str = Body(..., embed=True),
+        repository: str = Body(..., embed=True)
+):
+    g = Github(token)
+    try:
+        repo = g.get_repo(f"{username}/{repository}")
+        # Specify the events you want to trigger the webhook
+        events = ["push", "pull_request"]
+        githutb_config = {
+            "url": config.CALLBACK_URL,
+            "content_type": "json"
+        }
+        # Create the webhook
+        webhook = repo.create_hook(name="web", config=githutb_config, events=events, active=True)
+        return {"status": "Webhook created", "id": webhook.id}
+    except GithubException as e:
+        logging.error(f"Failed to create webhook: {e}")
+        raise HTTPException(status_code=400, detail=f"GitHub API error: {e.data.get('message', 'Unknown error')}")
+
+    except Exception as e:
+        logging.error(f"Unexpected error: {e}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
 async def fetch_and_process_commits(owner, repo_name, token, commit_id=None):
