@@ -31,7 +31,7 @@ async def handle_webhook(request: Request):
             for thing in event:
                 ic(f"data in events {thing}")
 
-        """
+
          if 'commits' in event_data:
             # Convert raw commits to Pydantic models before processing
             commit_models = [CommitData(
@@ -44,7 +44,7 @@ async def handle_webhook(request: Request):
             ) for commit in event_data['commits']]
             results = await process_commits(commit_models, config.KAFKA_TOPIC)
             return {"status": "Processed", "results": results}
-        """
+
         # Return the stringified JSON data
     except Exception as e:
         logging.error(f"Error in processing commits: {e}")
