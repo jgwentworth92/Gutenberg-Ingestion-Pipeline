@@ -43,6 +43,8 @@ def process_message(message, chain):
         ic(updated_doc.page_content)
         ic("___________________ summary content end___________")
         ic(f"metadata of commit {doc.metadata}")
+        ic("___________________ summary content end___________")
+        ic(f"page content of commit {doc.page_content}")
     return rtn_documents
 
 
