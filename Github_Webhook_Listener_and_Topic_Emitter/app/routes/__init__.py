@@ -59,7 +59,7 @@ async def fetch_and_process_commits(owner, repo_name, token, commit_id=None):
             author=commit.commit.author.name,
             message=commit.commit.message,
             date=commit.commit.author.date.isoformat(),
-            url=commit.html_url,
+            url=commit.html_url,repo_name=repo.name,
             commit_id=commit.sha,
             files=[FileInfo(
                 filename=file.filename,
