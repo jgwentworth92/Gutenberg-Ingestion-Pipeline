@@ -48,7 +48,7 @@ async def consume_and_store_documents():
             # Determine collection name dynamically from document metadata
 
             try:
-                collection_name=documents[0].metadata['author']
+                collection_name=documents[0].metadata['author']+"_"+str(documents[0].metadata['repo_name'])
                 logging.info(f"collection is called {collection_name}")
                 embed = OpenAIEmbeddings(openai_api_key=config.OPENAI_API_KEY)
                 vectordb = get_qdrant_vector_store(host=config.VECTOR_DB_HOST, port=config.VECTOR_DB_PORT,
