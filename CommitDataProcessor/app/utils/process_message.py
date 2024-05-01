@@ -1,5 +1,6 @@
 from json import dumps
 
+from  app.utils.schema import CommitData, FileInfo
 from langchain_core.documents import Document
 from icecream import ic
 
@@ -55,19 +56,30 @@ def create_documents(event_data):
         documents.append(doc)
     return documents
 
+def create_document(file: FileInfo, event_data: CommitData):
+    try:
+        # Validate file and event_data with Pydantic
+        validated_file = FileInfo(**file)
+        validated_event = CommitData(**event_data)
 
-def create_document(file, event_data):
-    page_content = f"Filename: {file['filename']}, Status: {file['status']} files: {file['patch']}"
-    metadata = {
-        "filename": file['filename'],
-        "status": file['status'],
-        "additions": file['additions'],
-        "deletions": file['deletions'],
-        "changes": file['changes'],
-        "author": event_data['author'],
-        "date": event_data['date'],
-        "commit_url": event_data['url'],
-        "id": event_data['commit_id'],
-        "token_count": len(page_content.split())
-    }
-    return Document(page_content=page_content, metadata=metadata)
+        # Prepare content and metadata
+        page_content = f"Filename: {validated_file.filename}, Status: {validated_file.status}, Files: {validated_file.patch}"
+        metadata = {
+            "filename": validated_file.filename,
+            "status": validated_file.status,
+            "additions": validated_file.additions,
+            "deletions": validated_file.deletions,
+            "changes": validated_file.changes,
+            "author": validated_event.author,
+            "date": validated_event.date,
+            "repo_name": validated_event.repo_name,
+            "commit_url": validated_event.url,
+            "id": validated_event.commit_id,
+            "token_count": len(page_content.split())
+        }
+
+        # Create Document
+        document = Document(page_content=page_content, metadata=metadata)
+        return document
+    except Exception as e:
+        logging.error("Validation error:", e)
