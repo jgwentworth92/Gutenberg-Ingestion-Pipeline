@@ -48,10 +48,10 @@ async def add_webhook(
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
-async def fetch_and_process_commits(owner, repo_name, token, commit_id=None):
+async def fetch_and_process_commits(owner, repo_name, token, commit_ids=None):
     g = Github(token)
     repo = g.get_repo(f"{owner}/{repo_name}")
-    commits = [repo.get_commit(commit_id)] if commit_id else repo.get_commits()
+    commits = [repo.get_commit(commit_id) for commit_id in commit_ids] if commit_ids else repo.get_commits()
 
     commit_models = []
     for commit in commits:
@@ -84,12 +84,14 @@ async def handle_webhook(request: Request):
         owner = event_data['repository']['owner']['login']
         repo = event_data['repository']['name']
         return_list=[]
+        commit_ids=[]
         for commit_id in event_data['commits']:
          # Process the first commit for simplicity
-            results = await fetch_and_process_commits(owner, repo, config.GITHUB_ACCESS_TOKEN, commit_id['id'])
-            logging.info(f'commit id in push {commit_id['id']}')
-            return_list.append(results)
-        return {"status": "Processed", "results":  return_list}
+            commit_ids.append( commit_id['id'])
+            logging.info(f"commit id in push {commit_id['id'] } ")
+        results = await fetch_and_process_commits(owner, repo, config.GITHUB_ACCESS_TOKEN, commit_ids)
+
+        return {"status": "Processed", "results":  results}
 
     return {"status": "Received", "data": "No relevant data to process"}
 
