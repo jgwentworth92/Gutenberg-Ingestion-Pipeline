@@ -6,7 +6,7 @@ from json import loads
 from app.config import get_config
 
 
-async def check_kafka_connection(bootstrap_servers, topic, timeout=60):
+async def check_kafka_connection(bootstrap_servers, topic, timeout=180):
     config = get_config()
     end_time = asyncio.get_event_loop().time() + timeout
     while asyncio.get_event_loop().time() < end_time:
