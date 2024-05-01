@@ -72,6 +72,7 @@ Below are the environment variables required by each microservice:
 #### General
 - `KAFKA_BOOTSTRAP_SERVERS`: Address of the Kafka server (e.g., `localhost:9092`)
 - `VECTORDB_TOPIC_NAME`: The Kafka topic name for vector database operations
+-  `CALLBACK_URL`: url used for callback on webhooks by ngrok.
 
 #### GitHub Webhook Listener and Topic Emitter
 - `GITHUB_ACCESS_TOKEN`: Your GitHub access token for authenticating GitHub API requests
