@@ -87,6 +87,7 @@ async def handle_webhook(request: Request):
         for commit_id in event_data['commits']:
          # Process the first commit for simplicity
             results = await fetch_and_process_commits(owner, repo, config.GITHUB_ACCESS_TOKEN, commit_id['id'])
+            logging.info(f'commit id in push {commit_id['id']}')
             return_list.append(results)
         return {"status": "Processed", "results":  return_list}
 
