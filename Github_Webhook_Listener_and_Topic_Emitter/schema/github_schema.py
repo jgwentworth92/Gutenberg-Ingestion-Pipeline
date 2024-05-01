@@ -15,5 +15,6 @@ class CommitData(BaseModel):
     message: str
     date: str
     url: str
+    repo_name:str
     commit_id: str
     files: List[FileInfo]
