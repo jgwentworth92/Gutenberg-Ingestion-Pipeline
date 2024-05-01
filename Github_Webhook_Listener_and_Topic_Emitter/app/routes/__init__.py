@@ -83,9 +83,12 @@ async def handle_webhook(request: Request):
     if 'commits' in event_data and 'repository' in event_data:
         owner = event_data['repository']['owner']['login']
         repo = event_data['repository']['name']
-        commit_id = event_data['commits'][0]['id']  # Process the first commit for simplicity
-        results = await fetch_and_process_commits(owner, repo, config.GITHUB_ACCESS_TOKEN, commit_id)
-        return {"status": "Processed", "results": results}
+        return_list=[]
+        for commit_id in event_data['commits']:
+         # Process the first commit for simplicity
+            results = await fetch_and_process_commits(owner, repo, config.GITHUB_ACCESS_TOKEN, commit_id['id'])
+            return_list.append(results)
+        return {"status": "Processed", "results":  return_list}
 
     return {"status": "Received", "data": "No relevant data to process"}
 
